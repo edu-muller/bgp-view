@@ -1,6 +1,6 @@
 // Credit https://medium.com/@blaiseiradukunda/react-table-7-tutorial-3d8ba6ac8b16
 import React from "react";
-import { useTable, useSortBy, useFilters, useGlobalFilter, useFlexLayout, useResizeColumns } from "react-table";
+import { useTable, useSortBy, useFilters, useFlexLayout, useResizeColumns } from "react-table";
 import CustomInput from "./CustomInput";
 
 window.Date.prototype.isValid = function () {
@@ -8,19 +8,6 @@ window.Date.prototype.isValid = function () {
   // object not strictly equal to itself.
   // eslint-disable-next-line
   return this.getTime() === this.getTime();
-};
-
-// value and onChange function
-const GlobalFilter = ({ globalFilter, setGlobalFilter }) => {
-  return (
-    <CustomInput
-      value={globalFilter || ""}
-      onChange={e => {
-        setGlobalFilter(e.target.value || undefined); // Set undefined to remove the filter entirely
-      }}
-      placeholder={`Search All ...`}
-    />
-  );
 };
 
 const ColumnFilter = ({ column: { filterValue, setFilter, filter } }) => {
@@ -77,7 +64,6 @@ const ReactTable = ({ columns, data }) => {
     rows,
     prepareRow,
     state,
-    setGlobalFilter,
   } = useTable(
     {
       columns,
@@ -87,7 +73,6 @@ const ReactTable = ({ columns, data }) => {
     },
     // hooks for filters
     useFilters,
-    useGlobalFilter,
     // hook for sorting
     useSortBy,
     // hooks for resizing
@@ -96,13 +81,7 @@ const ReactTable = ({ columns, data }) => {
   );
   return (
     <div>
-      <div
-        className="p-1 border-0 d-flex justify-content-end"
-      >
-        <GlobalFilter
-          globalFilter={state.globalFilter}
-          setGlobalFilter={setGlobalFilter}
-        />
+      <div className="p-1 border-0 d-flex justify-content-end">
       </div>
       <div className='table' {...getTableProps()}>
         <div >
@@ -128,7 +107,7 @@ const ReactTable = ({ columns, data }) => {
                     : "asc"
                   : "";
                 const {onClick , ...rest} = getHeaderProps(getSortByToggleProps())
-                console.log('click', onClick, 'rest',rest)
+                //-= console.log('click', onClick, 'rest',rest)
                 return (
                   <div
                     key={`th-${i}`}

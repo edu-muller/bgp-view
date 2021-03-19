@@ -8,8 +8,6 @@ import HighchartsReact from "highcharts-react-official";
 
 //-= import map from "@highcharts/map-collection/custom/world.geo.json";
 import mapData from "./maps/world";
-//-= import ReactTable from "react-table-6";
-//-= import "react-table-6/react-table.css";
 import ReactTable from "./components/ReactTable";
 
 HighchartsMap(Highcharts);
@@ -284,13 +282,34 @@ class MapaPrefixos extends React.Component {
 			]
 		};
 		
-		const Genres = ({ values }) => {
+		const PathSpan = ({ values, rowData}) => {
 			return (
 				<>
-					{values.map((genre, idx) => {
+					{values.map((tag, idx) => {
+						let className = [
+							"tag",
+							"path",
+							...(rowData.prepends.includes(tag)) ? ["prepend"] : [],
+							...(rowData.originPrepends.includes(tag)) ? ["origin-prepend"] : [],
+							...(rowData.poisonPrepends.includes(tag)) ? ["poison-prepend"] : [],
+						]
 						return (
-							<span key={idx} className="badge">
-								{genre}
+							<span key={idx} className={className.join(" ")}>
+								{tag}
+							</span>
+						);
+					})}
+				</>
+			);
+		};
+		
+		const CommunitySpan = ({ values }) => {
+			return (
+				<>
+					{values.map((tag, idx) => {
+						return (
+							<span key={idx} className={"tag community"}>
+								{tag}
 							</span>
 						);
 					})}
@@ -306,12 +325,12 @@ class MapaPrefixos extends React.Component {
 			{
 				Header: "Caminho",
 				accessor: "path",
-				Cell: ({ cell: { value } }) => value,
+				Cell: cellInfo => <PathSpan values={cellInfo.value} rowData={cellInfo.row.original} />,
 			},
 			{
 				Header: "Comunidades",
 				accessor: "community",
-				Cell: ({ cell: { value } }) => <Genres values={value} />,
+				Cell: ({ cell: { value } }) => <CommunitySpan values={value} />,
 			},
 			{
 				Header: "Origin Prepends",
@@ -328,7 +347,6 @@ class MapaPrefixos extends React.Component {
 		];
 		
 		const data = this.state.routes ?? [];
-		const filtered = this.state.routesFiltereds ?? [];
 		
 		return (
 			<div>
@@ -344,28 +362,7 @@ class MapaPrefixos extends React.Component {
 					<label htmlFor="displayLabels">Exibir rótulos</label>
 				</form>
 				<HighchartsReact highcharts={Highcharts} options={this.options} constructorType={"mapChart"} ref={this.chartRef} />
-				<ReactTable
-					data={data}
-					columns={columns}
-					// filterable
-					// filtered={filtered}
-					// onFilteredChange={(filtered, column, value) => {
-					// 	this.onFilteredChangeCustom(value, column.id || column.accessor);
-					// }}
-					// defaultFilterMethod={(filter, row, column) => {
-					// 	const id = filter.pivotId || filter.id;
-					// 	if (typeof filter.value === "object") {
-					// 		return row[id] !== undefined
-					// 			? filter.value.indexOf(row[id]) > -1
-					// 			: true;
-					// 	} else {
-					// 		return row[id] !== undefined
-					// 			? String(row[id]).indexOf(filter.value) > -1
-					// 			: true;
-					// 	}
-					// }}
-					// className="-striped -highlight"
-				/>
+				<ReactTable data={data} columns={columns} />
 			</div>
 		);
 	}
