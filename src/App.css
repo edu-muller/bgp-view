@@ -98,17 +98,17 @@ span.tag {
 .path {
   background-color: #dfdfdf;
 }
+.path.poisoner {
+	background-color: #e6dc5c;
+}
+.path.poisoned {
+	background-color: #c89ae6;
+}
 .path.prepend {
 	background-color: #9abbe6;
 }
 .path.prepend.origin-prepend {
 	background-color: #ffb661;
-}
-.path.prepend.poison-prepend {
-	background-color: #c89ae6;
-}
-.path.prepend.origin-prepend.poison-prepend {
-	background-image: linear-gradient(135deg, #c89ae6, #ffb661);
 }
 input {
   padding: 10px;
