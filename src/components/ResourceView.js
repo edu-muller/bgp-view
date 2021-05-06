@@ -1,23 +1,24 @@
 import React from "react";
+import { format as dateFormat } from "date-fns";
 
 import Highcharts from "highcharts";
-import HighchartsMap from "highcharts/modules/map";
 import HighchartsReact from "highcharts-react-official";
+import HighchartsMap from "highcharts/modules/map";
+import HighchartsMarkerClusters from "highcharts/modules/marker-clusters";
 
 import DateFnsUtils from "@date-io/date-fns";
-import { TextField, Button } from '@material-ui/core';
+import { TextField, Button, FormControlLabel, Checkbox } from "@material-ui/core";
 import { KeyboardDateTimePicker, MuiPickersUtilsProvider } from "@material-ui/pickers";
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from "@material-ui/core/styles";
 
-//import mapData from "@highcharts/map-collection/custom/world.geo.json";
-import mapData from "../maps/world";
+import world from "@highcharts/map-collection/custom/world.geo.json";
 import ReactTable from "./ReactTable";
 
 HighchartsMap(Highcharts);
+HighchartsMarkerClusters(Highcharts);
 
-const mapSerie = {
+const worldSerie = {
 	name: 'World',
-	mapData: mapData,
 	borderColor: '#707070',
 	nullColor: 'rgba(200, 200, 200, 0.3)',
 	showInLegend: false,
@@ -25,6 +26,10 @@ const mapSerie = {
 
 const useStyles = makeStyles((theme) => ({
 	form: {
+		'&': {
+			padding: '20px', 
+			textAlign: 'center',
+		},
 		'& > *': {
 			verticalAlign: 'middle',
 		},
@@ -34,29 +39,35 @@ const useStyles = makeStyles((theme) => ({
 		},
 		'& *:focus': {
 			outline: 'unset',
-		}
+		},
 	},
+	displayOptions: {
+		'&': {
+			textAlign: 'center',
+		},
+	}
 }));
 
 export default function ResourceView() {
 	
 	const urlApi = 'https://bgp-report.herokuapp.com/api';
 	const classes = useStyles();
-	const [resource, setResource] = React.useState('');
+	const [inputResource, setInputResource] = React.useState('');
 	const [appliedResource, setAppliedResource] = React.useState('');
-	const [collector, setCollector] = React.useState('');
+	const [inputCollector, setInputCollector] = React.useState('');
 	const [appliedCollector, setAppliedCollector] = React.useState('');
-	const [timestamp, setTimestamp] = React.useState(null);
-	const [appliedTimestamp, setAppliedTimestamp] = React.useState(null);
-	const [displayLabels, setDisplayLabels] = React.useState(false);
+	const [inputTimestamp, setInputTimestamp] = React.useState(null);
+	const [displayLabels] = React.useState(false);
+	const [clusterPoints, setClusterPoints] = React.useState(false);
 	const [routes, setRoutes] = React.useState(null);
-	// const [visibles, setVisibles] = React.useState(null);
-	// const [invisibles, setInvisibles] = React.useState(null);
-	// const [prependeds, setPrependeds] = React.useState(null);
-	
+	const [availableCollectors, setAvailableCollectors] = React.useState(null);
+	const [inputLive, setInputLive] = React.useState(true);
 	const [options, setOptions] = React.useState({
 		chart: {
-			height: 700
+			map: world,
+			height: 700,
+			shadow: true,
+			animation: false,
 		},
 		
 		title: {
@@ -64,11 +75,7 @@ export default function ResourceView() {
 		},
 		
 		subtitle: {
-			text: [
-				...(appliedResource) ? [`Resource: ${appliedResource}`] : [],
-				...(appliedCollector) ? [`Collector: ${appliedCollector}`] : [],
-				...(appliedTimestamp) ? [`Timestamp: ${appliedTimestamp}`] : [],
-			].join(' | ') || '-',
+			text: '-',
 		},
 		
 		legend: {
@@ -83,14 +90,41 @@ export default function ResourceView() {
 		
 		tooltip: {
 			animation: false,
-			formatter: function () {
-				return `${this.point.name} - ${this.point.geographical} (${this.point.countryCode})` + (
-					this.point.lat ? '<br>Lat: ' + this.point.lat + ' Lon: ' + this.point.lon : '');
-			}
+			hideDelay: 0,
+			pointFormat: `{point.name} - {point.geographical} ({point.countryCode})<br>Lat: {point.lat} Lon: {point.lon}`,
 		},
 		
-		series: [ mapSerie ],
+		plotOptions: {
+			mappoint: {
+				stickyTracking: false,
+				dataLabels: {
+					format: displayLabels ? '{point.id}' : '',
+					enabled: true,
+				},
+				marker: {
+					symbol: 'circle',
+				},
+				cluster: {
+					enabled: clusterPoints,
+					allowOverlap: false,
+					animation: {
+						duration: 50,
+					},
+				},
+			},
+		},
+		
+		colors: ['BLACK', 'GREEN', 'BLUE', 'RED'],
+		
+		series: [ worldSerie ],
 	});
+	const inputLiveRef = React.useRef(inputLive);
+	const liveUpdateRef = React.useRef(null);
+	
+	React.useEffect(() => {
+		inputLiveRef.current = inputLive;
+		if (inputLiveRef.current) updateResources({ collectorFilter: appliedCollector, resourceFilter: appliedResource, liveFilter: true, collectors: availableCollectors });
+	}, [inputLive]);
 	
 	const columns = [
 		{
@@ -121,56 +155,39 @@ export default function ResourceView() {
 			filter: "integer",
 		},
 		{
+			Header: "Total Prepends",
+			accessor: "prepends.length",
+			filter: "integer",
+		},
+		{
 			Header: "Poisoned Routes",
 			accessor: "poisonedRoutes.length",
 			filter: "integer",
 		},
-		{
-			Header: "Total Prepends",
-			accessor: "prepends.length",
-			filter: "integer",
-		}
 	];
 	
-	const updateSeries = ({ visibles, invisibles, prependeds } = {}) => {
+	const updateSeries = ({ resource, collector, timestamp, visibles, invisibles, prependeds } = {}) => {
 		setOptions({
-			series: [ mapSerie
-				, {
-					name: `Visível (${visibles?.length ?? 0})`,
+			subtitle: {
+				text: [
+					...(resource) ? [`<b>Resource</b>: ${resource}`] : [],
+					...(collector) ? [`<b>Collector</b>: ${collector}`] : [],
+					...(timestamp) ? [`<b>Timestamp</b>: ${dateFormat(timestamp, 'yyyy-MM-dd HH:mm')}`] : [],
+				].join(' | ') || '-',
+			},
+			series: [ worldSerie, 
+				{
 					type: 'mappoint',
-					marker: {
-						fillColor: 'GREEN',
-						symbol: 'circle',
-					},
-					dataLabels: {
-						format: '{point.id}',
-						enabled: displayLabels,
-					},
-					data: visibles,
+					name: `Visible (${visibles ? visibles.length : 'loading...'})`,
+					data: visibles ?? [],
 				}, {
-					name: `Visível com Prepend (${prependeds?.length ?? 0})`,
 					type: 'mappoint',
-					marker: {
-						fillColor: 'BLUE',
-						symbol: 'circle',
-					},
-					dataLabels: {
-						format: '{point.id}',
-						enabled: displayLabels,
-					},
-					data: prependeds,
+					name: `Visible only Prepended (${prependeds ? prependeds.length : 'loading...'})`,
+					data: prependeds ?? [],
 				}, {
-					name: `Não Visível (${invisibles?.length ?? 0})`,
 					type: 'mappoint',
-					marker: {
-						fillColor: 'RED',
-						symbol: 'circle',
-					},
-					dataLabels: {
-						format: '{point.id}',
-						enabled: displayLabels,
-					},
-					data: invisibles,
+					name: `Not Visible (${invisibles ? invisibles.length : 'loading...'})`,
+					data: invisibles ?? [],
 				}
 			]
 		});
@@ -178,25 +195,42 @@ export default function ResourceView() {
 	
 	const search = (event) => {
 		event.preventDefault();
-		if (!resource) return;
-		let applied = resource;//-= REVER como corrigir.
-		setAppliedResource(resource);
-		setAppliedCollector(collector);
-		setAppliedTimestamp(timestamp);
+		if (!inputResource) return;
+		if (liveUpdateRef.current) clearTimeout(liveUpdateRef.current);
+		let resourceFilter = inputResource, collectorFilter = inputCollector, timestampFilter = inputTimestamp, liveFilter = inputLiveRef.current;
+		setAppliedResource(resourceFilter);
+		setAppliedCollector(collectorFilter);
 		setRoutes(undefined);
 		updateSeries();
+		if (timestampFilter) {
+			liveFilter = false;
+			setInputLive(false);
+		}
 		
 		fetch(`${urlApi}/collectors`).then(res => res.json()).then(collectors => {
-			if (!collectors?.length) return;
-			let collectorFilter = (collector) ? `&collectors=${collector}` : '';
-			let timestampFilter = (timestamp) ? `&timestamp=${timestamp.getTime()}` : '';
-			fetch(`${urlApi}/resources?resources=${applied}${collectorFilter}${timestampFilter}`).then(res => res.json()).then(data => {
-				process(collectors, data);
-			});
+			setAvailableCollectors(collectors);
+			updateResources({ collectorFilter, timestampFilter, resourceFilter, liveFilter, collectors });
 		});
 	}
 	
-	const process = (collectors, resources) => {
+	const updateResources = ({ collectorFilter, timestampFilter, resourceFilter, liveFilter, collectors }) => {
+		if (!collectors?.length) return;
+		fetch(`${urlApi}/resources?resources=${resourceFilter}
+				${(collectorFilter) ? `&collectors=${collectorFilter}` : ''}
+				${(timestampFilter) ? `&timestamp=${timestampFilter.getTime()}` : ''}
+				${(liveFilter) ? `&live=${liveFilter}` : ''}`
+				).then(res => res.json()).then(data => {
+			process(collectors, data, { resource: resourceFilter, collector: collectorFilter });
+			
+			if (inputLiveRef.current) {
+				liveUpdateRef.current = setTimeout(() => {
+					if (inputLiveRef.current) updateResources({ collectorFilter, resourceFilter, liveFilter: true, collectors });
+				}, 5000);
+			}
+		});
+	}
+	
+	const process = (collectors, resources, { resource, collector} = {}) => {
 		let visibles = [], invisibles = [], prependeds = [];
 		resources.routes.forEach(r => {
 			r.prepends = [];
@@ -211,7 +245,7 @@ export default function ResourceView() {
 						if (current === origin) r.originPrepends.push(current);
 						if (j < i - 1) {
 							r.poisonPrepends.push(current);
-							r.poisonedRoutes.concat(r.path.slice(j, i));
+							r.poisonedRoutes.push(...r.path.slice(j + 1, i));
 						}
 						r.prepends.push(current);
 						break;
@@ -221,7 +255,7 @@ export default function ResourceView() {
 		});
 		
 		collectors.forEach(c => {
-			if (appliedCollector && !appliedCollector.split(',').includes(`${c.id}`)) return;
+			if (collector && !collector.split(',').includes(`${c.id}`)) return;
 			let v = resources.routes.filter(r => r.collector === c.id);
 			(!v.length ? invisibles : v.some(r => !r.originPrepends.length) ? visibles : prependeds).push(
 				{
@@ -236,7 +270,20 @@ export default function ResourceView() {
 			);
 		});
 		setRoutes(resources.routes);
-		updateSeries({ visibles, invisibles, prependeds });
+		updateSeries({ visibles, invisibles, prependeds, resource, collector, timestamp: new Date(resources.queriedAt) });
+	}
+	
+	const onChangeClusterPoints = (event) => {
+		setClusterPoints(event.target.checked);
+		setOptions({
+			plotOptions: {
+				mappoint: {
+					cluster: {
+						enabled: event.target.checked,
+					}
+				}
+			}
+		});
 	}
 	
 	const PathSpan = ({ values, rowData }) => {
@@ -278,15 +325,19 @@ export default function ResourceView() {
 	return (
 		<React.Fragment>
 			<div>
-				<form onSubmit={search} className={classes.form} style={{padding: '20px', textAlign: 'center'}} >
-					<TextField id="resource" label="Resource" value={resource} onChange={e => setResource(e.target.value)} />
-					<TextField id="collector" label="Collector" value={collector} onChange={e => setCollector(e.target.value)} />
+				<form onSubmit={search} className={classes.form}>
+					<TextField id="resource" label="Resource" value={inputResource} onChange={e => setInputResource(e.target.value)} />
+					<TextField id="collector" label="Collector" value={inputCollector} onChange={e => setInputCollector(e.target.value)} />
 					<MuiPickersUtilsProvider utils={DateFnsUtils}>
-						<KeyboardDateTimePicker id="timestamp" label="Timestamp" value={timestamp} clearable showTodayButton 
-								ampm={false} format="dd/MM/yyyy HH:mm" onChange={setTimestamp} />
+						<KeyboardDateTimePicker id="timestamp" label="Timestamp" value={inputTimestamp} clearable showTodayButton 
+								ampm={false} format="yyyy-MM-dd HH:mm" onChange={setInputTimestamp} />
 					</MuiPickersUtilsProvider>
 					<Button type="submit" variant="contained">Search</Button>
 				</form>
+				<div className={classes.displayOptions}>
+					<FormControlLabel label="Cluster Points" control={<Checkbox checked={clusterPoints} onChange={onChangeClusterPoints} />} />
+					<FormControlLabel label="Live" control={<Checkbox checked={inputLive} onChange={e => setInputLive(e.target.checked)} />} />
+				</div>
 				<HighchartsReact highcharts={Highcharts} options={options} constructorType={"mapChart"} />
 				<ReactTable data={routes ?? []} columns={columns} />
 			</div>

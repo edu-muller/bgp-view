@@ -1,14 +1,7 @@
-// Credit https://medium.com/@blaiseiradukunda/react-table-7-tutorial-3d8ba6ac8b16
+// Reference https://medium.com/@blaiseiradukunda/react-table-7-tutorial-3d8ba6ac8b16
 import React from "react";
 import { useTable, useSortBy, useFilters, useFlexLayout, useResizeColumns } from "react-table";
 import { Form } from "react-bootstrap";
-
-window.Date.prototype.isValid = function () {
-	// An invalid date object returns NaN for getTime() and NaN is the only
-	// object not strictly equal to itself.
-	// eslint-disable-next-line
-	return this.getTime() === this.getTime();
-};
 
 const CustomInput = (props) => {
 	let { placeholder, name, value, onChange = () => null } = props;
@@ -90,66 +83,55 @@ const ReactTable = ({ columns, data }) => {
 		useResizeColumns
 	);
 	return (
-		<div>
-			<div className="p-1 border-0 d-flex justify-content-end">
-			</div>
-			<div className='table' {...getTableProps()}>
-				<div >
-					{headerGroups.map(headerGroup => (
-						<div {...headerGroup.getHeaderGroupProps()} className='tr'>
-							{headerGroup.headers.map((column, i) => {
-								const {
-									render,
-									getHeaderProps,
-									isSorted,
-									isSortedDesc,
-									getSortByToggleProps,
-									canFilter,
-									isResizing,
-									getResizerProps
-								} = column;
-								const extraClass = isSorted
-									? isSortedDesc
-										? "desc"
-										: "asc"
-									: "";
-								const { onClick, ...rest } = getHeaderProps(getSortByToggleProps())
-								return (
-									<div
-										key={`th-${i}`}
-										className={`${extraClass} th`}
-										{...rest}
-									>
-										<div onClick={onClick}>
-											{render("Header")}
-										</div>
-										<div
-											{...getResizerProps()}
-											className={`resizer ${isResizing ? 'isResizing' : ''}`}
-										/>
-										<div>{canFilter ? render("Filter") : null}</div>
+		<table {...getTableProps()}>
+			<thead>
+				{headerGroups.map(headerGroup => (
+					<tr {...headerGroup.getHeaderGroupProps()}>
+						{headerGroup.headers.map((column, i) => {
+							const {
+								render,
+								getHeaderProps,
+								isSorted,
+								isSortedDesc,
+								getSortByToggleProps,
+								canFilter,
+								isResizing,
+								getResizerProps
+							} = column;
+							const extraClass = isSorted
+								? isSortedDesc
+									? "desc"
+									: "asc"
+								: "";
+							const { onClick, ...rest } = getHeaderProps(getSortByToggleProps())
+							return (
+								<th key={`th-${i}`} className={`${extraClass} th`} {...rest} >
+									<div onClick={onClick}>
+										{render("Header")}
 									</div>
+									<div {...getResizerProps()} className={`resizer ${isResizing ? 'isResizing' : ''}`} />
+									<div>{canFilter ? render("Filter") : null}</div>
+								</th>
+							);
+						})}
+					</tr>
+				))}
+			</thead>
+			<tbody {...getTableBodyProps()}>
+				{rows.map((row, i) => {
+					prepareRow(row);
+					return (
+						<tr {...row.getRowProps()}>
+							{row.cells.map(cell => {
+								return (
+									<td {...cell.getCellProps()}>{cell.render("Cell")}</td>
 								);
 							})}
-						</div>
-					))}
-				</div>
-				<div {...getTableBodyProps()}>
-					{rows.map((row, i) => {
-						prepareRow(row);
-						return (
-							<div {...row.getRowProps()} className="tr">
-								{row.cells.map(cell => {
-									return (
-										<div {...cell.getCellProps()} className="td">{cell.render("Cell")}</div>
-									);
-								})}
-							</div>
-						);
-					})}
-				</div>
-			</div>
-		</div>
+						</tr>
+					);
+				})}
+			</tbody>
+		</table>
 	);
 };
 

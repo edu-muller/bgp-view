@@ -1,46 +1,7 @@
-.App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/*-= Vai mudar dps */
 table {
   border-spacing: 0;
-  border: 1px solid #ededed;
+  border: 1px solid #909090;
+  display: grid;
 }
 table tr:last-child td {
   border-bottom: 0;
@@ -49,16 +10,19 @@ table th,
 table td {
   margin: 0;
   padding: 0.5rem;
-  border-bottom: 1px solid #ededed;
-  border-right: 1px solid #ededed;
+  border-bottom: 1px solid #909090;
+  border-right: 1px solid #909090;
   position: relative;
+}
+table tr th {
+	background-color: #eaeaea;
 }
 table th:last-child,
 table td:last-child {
   border-right: 0;
 }
 table tr:nth-child(even) {
-  background-color: #fafafa;
+  background-color: #f2f2f2;
 }
 
 table th::before {
@@ -76,6 +40,10 @@ table th.sort-asc::before {
 }
 table th.sort-desc::before {
   border-top: 5px solid #22543d;
+}
+
+table thead tr th .form-group {
+	margin-bottom: 0px;
 }
 
 .App {
@@ -112,23 +80,8 @@ span.tag {
 }
 input {
   padding: 10px;
-  margin-bottom: 20px;
   font-size: 18px;
   border-radius: 5px;
   border: 1px solid #ddd;
   box-shadow: none;
-}
-
-/*-= REMOVER */
-div.tr {
-	border-bottom: 1px solid #909090;
-	border-left: 1px solid #909090;
-	border-right: 1px solid #909090;
-}
-div.th {
-	border-top: 2px solid #909090;
-}
-div.td, div.th {
-	padding: 5px;
-	border-left: 1px solid #909090;
 }
