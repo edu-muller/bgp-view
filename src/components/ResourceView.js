@@ -178,15 +178,15 @@ export default function ResourceView() {
 			series: [ worldSerie, 
 				{
 					type: 'mappoint',
-					name: `Visible (${visibles ? visibles.length : 'loading...'})`,
+					name: `Visible (${visibles ? visibles.length : visibles === null ? 'error' : 'loading...'})`,
 					data: visibles ?? [],
 				}, {
 					type: 'mappoint',
-					name: `Visible only Prepended (${prependeds ? prependeds.length : 'loading...'})`,
+					name: `Visible only Prepended (${prependeds ? prependeds.length : prependeds === null ? 'error' : 'loading...'})`,
 					data: prependeds ?? [],
 				}, {
 					type: 'mappoint',
-					name: `Not Visible (${invisibles ? invisibles.length : 'loading...'})`,
+					name: `Not Visible (${invisibles ? invisibles.length : invisibles === null ? 'error' : 'loading...'})`,
 					data: invisibles ?? [],
 				}
 			]
@@ -210,6 +210,8 @@ export default function ResourceView() {
 		fetch(`${urlApi}/collectors`).then(res => res.json()).then(collectors => {
 			setAvailableCollectors(collectors);
 			updateResources({ collectorFilter, timestampFilter, resourceFilter, liveFilter, collectors });
+		}).catch(() => {
+			updateSeries({ visibles: null, invisibles: null, prependeds: null });
 		});
 	}
 	
@@ -227,6 +229,8 @@ export default function ResourceView() {
 					if (inputLiveRef.current) updateResources({ collectorFilter, resourceFilter, liveFilter: true, collectors });
 				}, 5000);
 			}
+		}).catch(() => {
+			updateSeries({ visibles: null, invisibles: null, prependeds: null });
 		});
 	}
 	
