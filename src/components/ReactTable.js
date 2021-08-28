@@ -75,7 +75,9 @@ const ReactTable = ({ columns, data }) => {
 			columns,
 			data,
 			defaultColumn,
-			filterTypes
+			filterTypes,
+			autoResetFilters: false,
+			autoResetSortBy: false,
 		},
 		useFilters,
 		useSortBy,
@@ -96,7 +98,8 @@ const ReactTable = ({ columns, data }) => {
 								getSortByToggleProps,
 								canFilter,
 								isResizing,
-								getResizerProps
+								getResizerProps,
+								customClass,
 							} = column;
 							const extraClass = isSorted
 								? isSortedDesc
@@ -105,7 +108,7 @@ const ReactTable = ({ columns, data }) => {
 								: "";
 							const { onClick, ...rest } = getHeaderProps(getSortByToggleProps())
 							return (
-								<th key={`th-${i}`} className={`${extraClass} th`} {...rest} >
+								<th key={`th-${i}`} className={`${extraClass} ${customClass ?? ''}`} {...rest} >
 									<div onClick={onClick}>
 										{render("Header")}
 									</div>
@@ -124,7 +127,7 @@ const ReactTable = ({ columns, data }) => {
 						<tr {...row.getRowProps()}>
 							{row.cells.map(cell => {
 								return (
-									<td {...cell.getCellProps()}>{cell.render("Cell")}</td>
+									<td className={cell.column.customClass ?? ''} {...cell.getCellProps()}>{cell.render("Cell")}</td>
 								);
 							})}
 						</tr>

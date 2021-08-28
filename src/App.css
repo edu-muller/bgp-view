@@ -3,13 +3,18 @@ table {
   border: 1px solid #909090;
   display: grid;
 }
+table thead {
+	position: sticky;
+	top: 0px;
+	z-index: 1;
+}
 table tr:last-child td {
   border-bottom: 0;
 }
 table th,
 table td {
   margin: 0;
-  padding: 0.5rem;
+  padding: 4px;
   border-bottom: 1px solid #909090;
   border-right: 1px solid #909090;
   position: relative;
@@ -44,6 +49,12 @@ table th.sort-desc::before {
 
 table thead tr th .form-group {
 	margin-bottom: 0px;
+}
+
+table thead th.fixed-width,
+table tbody td.fixed-width {
+	flex-grow: unset !important;
+	text-align: center;
 }
 
 .App {

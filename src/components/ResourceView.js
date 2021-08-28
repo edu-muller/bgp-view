@@ -59,7 +59,7 @@ export default function ResourceView() {
 	const [inputTimestamp, setInputTimestamp] = React.useState(null);
 	const [displayLabels] = React.useState(false);
 	const [clusterPoints, setClusterPoints] = React.useState(false);
-	const [routes, setRoutes] = React.useState(null);
+	const [routes, setRoutes] = React.useState([]);
 	const [availableCollectors, setAvailableCollectors] = React.useState(null);
 	const [inputLive, setInputLive] = React.useState(true);
 	const [options, setOptions] = React.useState({
@@ -82,10 +82,12 @@ export default function ResourceView() {
 			align: 'left',
 			layout: 'vertical',
 			floating: true,
+			useHTML: true,
 		},
 		
 		mapNavigation: {
-			enabled: true,
+			enableButtons: true,
+			enableMouseWheelZoom: false,
 		},
 		
 		tooltip: {
@@ -128,43 +130,70 @@ export default function ResourceView() {
 	
 	const columns = [
 		{
-			Header: "Collector",
-			accessor: "collector",
-			filter: "integer",
-		},
-		{
-			Header: "Path",
-			accessor: "path",
-			filter: "integerArray",
-			Cell: cellInfo => <PathSpan values={cellInfo.value} rowData={cellInfo.row.original} />,
-		},
-		{
-			Header: "Path Length",
-			accessor: "path.length",
-			filter: "integer",
-		},
-		{
-			Header: "Communities",
-			accessor: "community",
-			filter: "stringMatchArray",
-			Cell: ({ cell: { value } }) => <CommunitySpan values={value} />,
-		},
-		{
-			Header: "Origin Prepends",
-			accessor: "originPrepends.length",
-			filter: "integer",
-		},
-		{
-			Header: "Total Prepends",
-			accessor: "prepends.length",
-			filter: "integer",
-		},
-		{
-			Header: "Poisoned Routes",
-			accessor: "poisonedRoutes.length",
-			filter: "integer",
+			id: 'total',
+			Header: info => {
+				const filteredCount = React.useMemo(() => info.rows.reduce((sum, row) => 1 + sum, 0), [info.rows])
+				return <>Total routes: {renderLoadedTextJfx(routes, routes => routes?.length ?? 0)} | Matching the filter: {filteredCount}</>
+			},
+			columns: [
+				{
+					Header: "Collector",
+					accessor: "collector",
+					filter: "integer",
+					width: 80,
+					customClass: 'fixed-width',
+				},
+				{
+					Header: "Path",
+					accessor: "path",
+					filter: "integerArray",
+					Cell: cellInfo => <PathSpan values={cellInfo.value} rowData={cellInfo.row.original} />,
+				},
+				{
+					Header: "Path Length",
+					accessor: "path.length",
+					filter: "integer",
+					width: 100,
+					customClass: 'fixed-width',
+				},
+				{
+					Header: "Communities",
+					accessor: "community",
+					filter: "stringMatchArray",
+					Cell: ({ cell: { value } }) => <CommunitySpan values={value} />,
+				},
+				{
+					Header: "Origin Prepends",
+					accessor: "originPrepends.length",
+					filter: "integer",
+					width: 135,
+					customClass: 'fixed-width',
+				},
+				{
+					Header: "Total Prepends",
+					accessor: "prepends.length",
+					filter: "integer",
+					width: 125,
+					customClass: 'fixed-width',
+				},
+				{
+					Header: "Poisoned Routes",
+					accessor: "poisonedRoutes.length",
+					filter: "integer",
+					width: 135,
+					customClass: 'fixed-width',
+				},
+			],
 		},
 	];
+	
+	const renderLoadedText = (text, formatText = text => text) => {
+		return (text === undefined) ? 'loading...' : (text === null) ? 'error' : formatText(text);
+	}
+	
+	const renderLoadedTextJfx = (text, formatText = text => text) => {
+		return (text === undefined) ? <i>loading...</i> : (text === null) ? <i style={{color: 'red'}}>error</i> : formatText(text);
+	}
 	
 	const updateSeries = ({ resource, collector, timestamp, visibles, invisibles, prependeds } = {}) => {
 		setOptions({
@@ -178,15 +207,15 @@ export default function ResourceView() {
 			series: [ worldSerie, 
 				{
 					type: 'mappoint',
-					name: `Visible (${visibles ? visibles.length : visibles === null ? 'error' : 'loading...'})`,
+					name: `Visible (${renderLoadedText(visibles, a => a.length)})`,
 					data: visibles ?? [],
 				}, {
 					type: 'mappoint',
-					name: `Visible only Prepended (${prependeds ? prependeds.length : prependeds === null ? 'error' : 'loading...'})`,
+					name: `Visible only Prepended (${renderLoadedText(prependeds, a => a.length)})`,
 					data: prependeds ?? [],
 				}, {
 					type: 'mappoint',
-					name: `Not Visible (${invisibles ? invisibles.length : invisibles === null ? 'error' : 'loading...'})`,
+					name: `Not Visible (${renderLoadedText(invisibles, a => a.length)})`,
 					data: invisibles ?? [],
 				}
 			]
@@ -200,7 +229,7 @@ export default function ResourceView() {
 		let resourceFilter = inputResource, collectorFilter = inputCollector, timestampFilter = inputTimestamp, liveFilter = inputLiveRef.current;
 		setAppliedResource(resourceFilter);
 		setAppliedCollector(collectorFilter);
-		setRoutes(undefined);
+		setRoutes();
 		updateSeries();
 		if (timestampFilter) {
 			liveFilter = false;
@@ -211,6 +240,7 @@ export default function ResourceView() {
 			setAvailableCollectors(collectors);
 			updateResources({ collectorFilter, timestampFilter, resourceFilter, liveFilter, collectors });
 		}).catch(() => {
+			setRoutes(null);
 			updateSeries({ visibles: null, invisibles: null, prependeds: null });
 		});
 	}
@@ -223,14 +253,15 @@ export default function ResourceView() {
 				${(liveFilter) ? `&live=${liveFilter}` : ''}`
 				).then(res => res.json()).then(data => {
 			process(collectors, data, { resource: resourceFilter, collector: collectorFilter });
-			
+		}).catch(() => {
+			setRoutes(null);
+			updateSeries({ visibles: null, invisibles: null, prependeds: null });
+		}).finally(() => {
 			if (inputLiveRef.current) {
 				liveUpdateRef.current = setTimeout(() => {
 					if (inputLiveRef.current) updateResources({ collectorFilter, resourceFilter, liveFilter: true, collectors });
 				}, 5000);
 			}
-		}).catch(() => {
-			updateSeries({ visibles: null, invisibles: null, prependeds: null });
 		});
 	}
 	
